@@ -1,73 +1,111 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
-    <!-- iOS Fullscreen & PWA značky -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="AirlineSim">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#0f172a">
+	<meta charset="utf-8">
+	<title>Airline Sim</title>
+	
+	<!-- 1. Apple PWA Meta Tagy (Fullscreen bez lišt Safari) -->
+	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="Airline Sim">
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="theme-color" content="#090d16">
+	
+	<!-- 2. Zákaz mezipaměti prohlížeče (Cache-Control pro iOS) -->
+	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+	<meta http-equiv="Pragma" content="no-cache">
+	<meta http-equiv="Expires" content="0">
 
-    <title>Airline Simulator</title>
+	<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+	<link rel="apple-touch-icon" href="index.apple-touch-icon.png">
 
-    <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #0f172a;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none;
-        }
+	<style>
+		html, body {
+			margin: 0;
+			padding: 0;
+			border: 0;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+			background-color: #090d16;
+			touch-action: none;
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			user-select: none;
+		}
 
-        #canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
+		#canvas {
+			display: block;
+			width: 100%;
+			height: 100%;
+		}
 
-        #status {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #e2e8f0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 16px;
-            text-align: center;
-        }
-    </style>
+		#status {
+			position: absolute;
+			left: 0;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			background-color: #090d16;
+			color: #facc15;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			font-size: 24px;
+			font-weight: bold;
+			letter-spacing: 1px;
+			z-index: 10;
+		}
+	</style>
 </head>
 <body>
-    <canvas id="canvas"></canvas>
-    <div id="status">Načítání simulátoru...</div>
+	<canvas id="canvas">
+		Váš prohlížeč nepodporuje WebGL canvas.
+	</canvas>
+	<div id="status">NAČÍTÁNÍ LETECKÉHO RADARU...</div>
 
-    <script src="index.js"></script>
-    <script>
-        const engine = new Engine({"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":123580,"index.wasm":37902138},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4});
-        const statusElement = document.getElementById('status');
+	<script src="index.js"></script>
+	<script>
+		// Unikátní časové razítko (Timestamp) - donutí iOS stáhnout vždy nejnovější data
+		const BUILD_VERSION = Date.now();
 
-        engine.startGame({
-            'onProgress': function (current, total) {
-                if (total > 0) {
-                    statusElement.innerText = "Načítání: " + Math.round((current / total) * 100) + "%";
-                }
-            }
-        }).then(() => {
-            statusElement.remove();
-        }).catch((err) => {
-            statusElement.innerText = "Chyba při spuštění:\n" + err;
-            console.error(err);
-        });
-    </script>
+		const GODOT_CONFIG = {
+			"args": [],
+			"canvasResizePolicy": 2,
+			"executable": "index",
+			"experimentalVK": false,
+			"fileSizes": {},
+			"focusCanvas": true,
+			"gdextensionLibs": [],
+			// Přidání verzovacího query parametru pro pck i wasm
+			"mainPack": "index.pck?v=" + BUILD_VERSION,
+			"onProgress": function (current, total) {
+				const statusElement = document.getElementById("status");
+				if (statusElement && total > 0) {
+					const pct = Math.floor((current / total) * 100);
+					statusElement.innerText = "NAČÍTÁNÍ: " + pct + "%";
+				}
+			}
+		};
+
+		const engine = new Engine(GODOT_CONFIG);
+
+		engine.startGame({
+			"executable": "index.wasm?v=" + BUILD_VERSION
+		}).then(() => {
+			const statusElement = document.getElementById("status");
+			if (statusElement) {
+				statusElement.style.display = "none";
+			}
+		}).catch((err) => {
+			console.error("Chyba spuštění enginu:", err);
+			const statusElement = document.getElementById("status");
+			if (statusElement) {
+				statusElement.innerText = "Chyba při startu simulátoru.";
+			}
+		});
+	</script>
 </body>
 </html>
